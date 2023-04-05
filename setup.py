@@ -7,17 +7,16 @@ setuptools.setup(
     name="ledgerlinker-client",
     version="0.10.0",
     author="Russell McLoughlin",
-    author_email="russ.mcl@gmail.com",
+    author_email="help@ledgerlinker.com",
     description="Syncronize your financial institution data to plain text accounting ledgers.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/rmcl/ledgerlink",
+    url="https://github.com/ledgerlinker/ledgerlinker-client",
     packages=setuptools.find_packages(),
     entry_points={
         'console_scripts': [
-            'sgsl = supergsl.sgsl:main',
-            'sgsl-util = supergsl.sgsl_util:main',
-        ],
+            'ledgerlinker = ledgerlinker.client:main'
+        ]
     },
     install_requires=[
         'requests',

@@ -205,8 +205,7 @@ class LedgerLinkerClient:
         print(last_update_details)
         self.store_last_link_file(last_update_details)
 
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Sync client for the LedgerLinker Service.')
     parser.add_argument('-c', '--config', required=True, help='Path to LedgerLinker Sync config file')
 
@@ -214,3 +213,6 @@ if __name__ == '__main__':
 
     client = LedgerLinkerClient(args.config)
     client.sync()
+
+if __name__ == '__main__':
+    main()
