@@ -4,7 +4,7 @@ import json
 from datetime import date
 from tempfile import TemporaryDirectory
 
-from ledgerlink import LedgerLinkerClient
+from ledgerlinker.client import LedgerLinkerClient
 
 
 class LedgerLinkerClientTestCase(TestCase):
@@ -40,7 +40,7 @@ class LedgerLinkerClientTestCase(TestCase):
         self.assertEqual(reload_last_links['sav'], date(2020,1,12))
         self.assertEqual(reload_last_links['party'], date(2020,1,1))
 
-    @patch('ledgerlink.requests.get')
+    @patch('ledgerlinker.client.requests.get')
     def test_get_export(self, mock_get):
         """Test getting a single export file and writing to disk."""
 
