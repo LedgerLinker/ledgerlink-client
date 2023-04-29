@@ -14,8 +14,15 @@ class LedgerLinkerClientTestCase(TestCase):
         self.config = {
             'api_url': 'https://superledgerlink.test/api/v1',
             'token': '123-token',
-
             'link_dir': self.temp_dir.name,
+
+            'exports': {
+                'check': {
+                    'output_path': './imports',
+                    'format': 'csv',
+                    'append_transactions': True
+                },
+            }
         }
 
         config_file_path = self.temp_dir.name + '/config.json'

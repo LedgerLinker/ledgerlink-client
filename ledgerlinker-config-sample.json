@@ -7,7 +7,7 @@
     # The path to the directory where the bot will store its data.
     # This can be an absolute path or a path relative to the directory that
     # the sync script is executed in.
-    "link_dir": "./imports"
+    "output_path": "./imports"
 
     # Do you want to create a new file each time new transactions are synced or
     # do you want to append to the same file?
@@ -15,8 +15,21 @@
 
     # Filter the transactions that are synced by Export. You can acquire your
     # transaction export slug at https://app.ledgerlinker.com/exports
-    "exports": [
-        "<account-1-slug>",
-        "<account-2-slug>"
-    ]
+
+    #"exports": [
+    #    "<account-1-slug>",
+    #    "<account-2-slug>"
+    #]
+
+    # OR
+
+    exports: {
+        "<account-1-slug>": {
+            "initial_start_date": "2020-01-01",
+            "output_path": "./imports",
+            "format": "csv",
+            "append_transactions": true
+        },
+        "<account-2-slug>": {}
+    }
 }

@@ -1,3 +1,4 @@
+from typing import List, Optional, Tuple
 import os
 import sys
 import argparse
@@ -16,6 +17,21 @@ DEFAULT_CONFIG_FILE = '~/.ledgerlink-config.json'
 class LedgerLinkerException(Exception):
     pass
 
+class ExportConfig:
+    def __init__(
+        self,
+        name : str,
+        link_dir : str,
+        format : str,
+        append_transactions : bool,
+        export_fields : Optional[List[str]] = None
+    ):
+        self.name = name
+        self.link_dir = link_dir
+        self.format = format
+        self.append_transactions = append_transactions
+        self.export_fields = export_fields
+
 class LedgerLinkerClient:
     """A client for retrieving transaction data from the LedgerLinker API."""
 
@@ -23,14 +39,10 @@ class LedgerLinkerClient:
         if config_file_path is None:
             config_file_path = DEFAULT_CONFIG_FILE
 
-        self.config = self.load_config_file(config_file_path)
+        self.config, self.desired_exports = self.load_config(config_file_path)
 
         if 'token' not in self.config:
             print('No token found in config file. Please run `ledgerlinker config` to generate a token.')
-            sys.exit(1)
-
-        if 'link_dir' not in self.config:
-            print('No link_dir found in config file. Please run `ledgerlinker config` to generate a link_dir.')
             sys.exit(1)
 
         # This is really only helpful for testing purposes.
@@ -39,18 +51,86 @@ class LedgerLinkerClient:
             DEFAULT_SERVICE_BASE_URL)
 
         self.token = self.config['token']
-        self.link_dir = self.config['link_dir']
+
+    def load_config(self, config_file_path : str) -> Tuple[dict, List[ExportConfig]]:
+        config = self._load_config_file(config_file_path)
+
+        if 'exports' not in config:
+            print('No exports found in config file. Please run `ledgerlinker config` to generate.')
+            sys.exit(1)
+
+        default_link_dir = config.get('output_path', None)
+        default_format = config.get('format', 'csv')
+        default_append_transactions = config.get('append_transactions', True)
 
         # Check if link dir exists. If not create it.
-        if not os.path.exists(self.link_dir):
-            print(f'Note: Link directory "{self.link_dir}" does not exist. Creating it now!')
-            os.makedirs(self.link_dir, exist_ok=True)
+        #if not os.path.exists(self.link_dir):
+        #    print(f'Note: Link directory "{self.link_dir}" does not exist. Creating it now!')
+        #    os.makedirs(self.link_dir, exist_ok=True)
 
-        self.desired_exports = self.config.get('exports', None)
+        if type(config['exports']) is list:
+            export_config = self._load_exports_from_list(
+                config,
+                default_link_dir,
+                default_format,
+                default_append_transactions)
 
-        self.should_append_transactions = self.config.get('append_transactions', True)
+        elif type(config['exports']) is dict:
+            export_config = self._load_exports_from_dict(
+                config,
+                default_link_dir,
+                default_format,
+                default_append_transactions)
+        else:
+            raise LedgerLinkerException(
+                'Invalid config file. Expected "exports" to be a list or dict. ' + \
+                'Learn more about the config file format at ' + \
+                'https://www.ledgerlinker.com/docs'
+            )
 
-    def load_config_file(self, config_file_path : str):
+        return config, export_config
+
+    def _load_exports_from_dict(
+        self,
+        config : dict,
+        default_link_dir : str,
+        default_format : str,
+        default_append_transactions : bool
+    ):
+        export_configs = []
+        for export_name, export_config in config['exports'].items():
+            options = {
+                'name': export_name,
+                'link_dir': export_config.get('link_dir', default_link_dir),
+                'format': export_config.get('format',  default_format),
+                'append_transactions': export_config.get('append_transactions', default_append_transactions)
+            }
+            export_configs.append(ExportConfig(**options))
+
+        return export_configs
+
+    def _load_exports_from_list(
+        self,
+        config : dict,
+        default_link_dir : str,
+        default_format : str,
+        default_append_transactions : bool
+    ):
+        if not default_link_dir:
+            print('"output_path" not found in config file. Please run `ledgerlinker config` to generate a token.')
+            sys.exit(1)
+
+        return [
+            ExportConfig(
+                export_name,
+                default_link_dir,
+                default_format,
+                default_append_transactions
+            )
+            for export_name in config['exports']
+        ]
+
+    def _load_config_file(self, config_file_path : str):
         """Load the config file from the given path."""
         try:
             with open(config_file_path, 'r') as config_file:
