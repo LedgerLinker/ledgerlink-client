@@ -59,11 +59,12 @@ class ProsperProvider(Provider):
                 "prosper_rating": note['prosper_rating']
             }
 
-            if latest_date is None or row['date'] > latest_date:
-                latest_date = row['date']
+            row_date = date.fromisoformat(note['origination_date'])
+            if latest_date is None or row_date > latest_date:
+                latest_date = row_date
 
             if start_date:
-                if row['date'] < start_date:
+                if row_date <= start_date:
                     continue
 
             purchases.append(row)
@@ -90,8 +91,8 @@ class ProsperProvider(Provider):
 
         update_name_purchases = f'prosper-{self.config.name}-purchases'
 
-        last_update_date = update_name_purchases.get(update_name_purchases)
-        purchases, last_update_date = self.fetch_purchases(start_date=last_update_date)
+        last_update_date = update_tracker.get(update_name_purchases)
+        purchases, new_last_update_date = self.fetch_purchases(start_date=last_update_date)
 
         self.store('purchases', purchases)
-        update_tracker.update(update_name_purchases, last_update_date)
+        update_tracker.update(update_name_purchases, new_last_update_date)

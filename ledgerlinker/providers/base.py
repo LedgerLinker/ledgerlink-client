@@ -47,7 +47,7 @@ class Provider:
         output_path = os.path.join(self.config.output_dir, output_file_name)
 
         file_exists = os.path.exists(output_path)
-        fp = open(output_path, 'w')
+        fp = open(output_path, 'a+')
         csv_writer = DictWriter(
             fp,
             fieldnames=self.get_fieldnames(output_name))

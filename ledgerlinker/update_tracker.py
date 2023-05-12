@@ -16,12 +16,12 @@ class LastUpdateTracker:
         """Get the last time the given export was synced."""
         return self.last_links.get(export_name, None)
 
-    def update(self, export_name, latest_date):
+    def update(self, export_name : str, latest_date : date):
         """Update the last link file with the latest date for the given export."""
         self.last_links[export_name] = latest_date
-        self._update_last_link_file(self.last_links)
+        self._update_last_link_file(self.last_link_path, self.last_links)
 
-    def _update_last_link_file(self, latest_transaction_by_export_id : dict):
+    def _update_last_link_file(self, last_link_path : str, latest_transaction_by_export_id : dict):
         """Update the last link file which contains the last time each export was synced."""
         with open(self.last_link_path, 'w') as config_file:
 
@@ -30,10 +30,10 @@ class LastUpdateTracker:
                 for export_id, latest_transaction in latest_transaction_by_export_id.items()
             }))
 
-    def _load_last_link_file(self) -> Dict[str, date]:
+    def _load_last_link_file(self, last_link_path) -> Dict[str, date]:
         """Load lastlink file which contains the last time each export was synced."""
         try:
-            with open(self.last_link_path, 'r') as last_links_fp:
+            with open(last_link_path, 'r') as last_links_fp:
                 last_links = json.load(last_links_fp)
         except FileNotFoundError:
             return {}
