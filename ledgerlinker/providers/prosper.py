@@ -1,16 +1,17 @@
 """A provider for Prosper.com investment marketplace."""
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 from csv import DictWriter
 import requests
 from datetime import date
 from .base import Provider, ProviderException
+from ledgerlinker.update_tracker import LastUpdateTracker
 import sys
 
 
 class ProsperProvider(Provider):
 
     def __init__(self, config, prosper_client=None):
-        self.config = config
+        super().__init__(config)
         if not self.load_dependency():
             raise ProviderException(
                 'Cannot use Prosper Provider because Prosper API lib not installed. Please install the prosper package.'
@@ -27,6 +28,11 @@ class ProsperProvider(Provider):
                 password=config.password)
 
     def load_dependency(self):
+        """Load the python dependency for this provider.
+
+        This allow LedgerLinker client to work even if the dependencies are not installed
+        and this provider is not desired.
+        """
         try:
             from prosper import ProsperAPI
             self.prosper_api_class = ProsperAPI
@@ -34,12 +40,13 @@ class ProsperProvider(Provider):
             return False
         return True
 
-    def fetch_purchases(self, start_date : Optional[date] = None) -> List[Dict]:
+    def fetch_purchases(self, start_date : Optional[date] = None) -> Tuple[List[Dict], date]:
         """Fetch purchases from Prosper."""
 
         notes = self.prosper_client.notes()
 
         purchases = []
+        latest_date = start_date
         for note in sorted(notes, key=lambda x: x['origination_date']):
             rate = round(note['borrower_rate'] * 100, 2)
             row = {
@@ -52,13 +59,16 @@ class ProsperProvider(Provider):
                 "prosper_rating": note['prosper_rating']
             }
 
+            if latest_date is None or row['date'] > latest_date:
+                latest_date = row['date']
+
             if start_date:
                 if row['date'] < start_date:
                     continue
 
             purchases.append(row)
 
-        return purchases
+        return purchases, latest_date
 
 
     def get_fieldnames(self, output_name):
@@ -73,11 +83,15 @@ class ProsperProvider(Provider):
                 'prosper_rating'
             ]
 
-    def sync(self, last_links : Optional[Dict[str, date]] = None):
+    def sync(self, update_tracker : LastUpdateTracker):
         """Sync the prosper provider."""
 
         self.register_output('purchases', 'prosper-purchases.csv')
 
-        purchases = self.fetch_purchases(
-            start_date=last_links['prosper'] if last_links else None)
+        update_name_purchases = f'prosper-{self.config.name}-purchases'
+
+        last_update_date = update_name_purchases.get(update_name_purchases)
+        purchases, last_update_date = self.fetch_purchases(start_date=last_update_date)
+
         self.store('purchases', purchases)
+        update_tracker.update(update_name_purchases, last_update_date)

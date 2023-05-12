@@ -8,6 +8,8 @@ from datetime import date
 import commentjson
 from ledgerlinker.providers import get_providers
 from ledgerlinker.providers.base import Provider, ProviderConfig
+from ledgerlinker.update_tracker import LastUpdateTracker
+
 
 DEFAULT_CONFIG_FILE = '~/.ledgerlink-config.json'
 
@@ -21,6 +23,19 @@ class ClientConfig:
 
 class LedgerLinkerClient:
     """A client for using LedgerLinker Providers."""
+
+    def __init__(self, config_file_path):
+        self.config = self._load_config_file(config_file_path)
+        self.providers = get_providers(self.config.providers)
+        self.last_update_tracker = LastUpdateTracker(self._last_link_path)
+
+    def sync(self):
+        """Sync all loaded providers."""
+
+        for provider_name, provider in self.providers.items():
+            print(f'Running sync for {provider_name}...')
+            provider.sync(self.last_update_tracker)
+
 
     def _load_config_file(self, config_file_path : str):
         """Load the config file from the given path."""
@@ -64,50 +79,6 @@ class LedgerLinkerClient:
 
         self._last_link_path = f'{self.output_dir}/.last_links.json'
         return ClientConfig(config, providers)
-
-    def get_last_link_path(self):
-        return self._last_link_path
-
-    def store_last_link_file(self, latest_transaction_by_export_id : dict):
-        """Store the last link file which contains the last time each export was synced."""
-        with open(self.get_last_link_path(), 'w') as config_file:
-
-            config_file.write(json.dumps({
-                export_id: latest_transaction.isoformat()
-                for export_id, latest_transaction in latest_transaction_by_export_id.items()
-            }))
-
-    def load_last_link_file(self) -> Dict[str, date]:
-        """Load lastlink file which contains the last time each export was synced."""
-        try:
-            with open(self.get_last_link_path(), 'r') as last_links_fp:
-                last_links = json.load(last_links_fp)
-        except FileNotFoundError:
-            return {}
-        except JSONDecodeError:
-            print('The last link file is corrupt. Please delete it and try again.')
-            sys.exit(1)
-
-        last_links_by_export_slug = {}
-        for link_slug, last_link in last_links.items():
-            try:
-                last_links_by_export_slug[link_slug] = date.fromisoformat(last_link)
-            except ValueError:
-                print('The last link file is corrupt. Please delete it and try again.')
-                sys.exit(1)
-
-        return last_links_by_export_slug
-
-    def __init__(self, config_file_path):
-        self.config = self._load_config_file(config_file_path)
-
-        self.last_links = self.load_last_link_file()
-        self.providers = get_providers(self.config.providers)
-
-    def sync(self):
-        for provider_name, provider in self.providers.items():
-            print(f'Running sync for {provider_name}...')
-            provider.sync(self.last_links)
 
 
 def main():

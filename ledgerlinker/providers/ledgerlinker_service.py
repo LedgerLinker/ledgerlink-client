@@ -9,7 +9,7 @@ import sys
 from csv import DictWriter
 from pathlib import Path
 from datetime import datetime, date, timedelta
-from .base import Provider
+from .base import Provider, ProviderConfig
 
 DEFAULT_SERVICE_BASE_URL = 'https://app.ledgerlinker.com'
 
@@ -19,6 +19,20 @@ class LedgerLinkerException(Exception):
 
 class LedgerLinkerServiceProvider(Provider):
 
+    def __init__(self, config : ProviderConfig):
+        super().__init__(config)
+
+        if hasattr(config, 'service_base_url'):
+            self.service_base_url = config.service_base_url
+        else:
+            self.service_base_url = DEFAULT_SERVICE_BASE_URL
+
+        try:
+            self.token = config.token
+        except AttributeError:
+            raise LedgerLinkerException('No ledgerlinker service token found in config file.')
+
+
     def get_headers(self) -> dict:
         return {'Authorization': f'Token {self.token}'}
 
@@ -26,7 +40,7 @@ class LedgerLinkerServiceProvider(Provider):
         """Get a list of available exports from the LedgerLinker service."""
         url = f'{self.service_base_url}/api/exports/'
         response = requests.get(url, headers=self.get_headers())
-        print(url)
+
         if response.status_code == 401:
             print('Error retrieving exports from LedgerLinker service. Your token appears to be invalid.')
             sys.exit(1)
@@ -76,20 +90,29 @@ class LedgerLinkerServiceProvider(Provider):
             data['categories'] = ','.join(data['categories'])
         return data
 
-    def store_transactions(self, file_path, fieldnames, transactions):
-        exists = False
-        if Path(file_path).is_file():
-            exists = True
+    def filter_exports(self, exports, desired_exports):
+        """Filter exports by the desired exports in the config file."""
+        if desired_exports is None:
+            return exports
 
-        with open(file_path, 'a+') as fp:
-            writer = DictWriter(fp, fieldnames=fieldnames, lineterminator='\n')
+        filtered_exports = []
+        for export in exports:
+            if export['slug'] in desired_exports:
+                filtered_exports.append(export)
 
-            if not exists:
-                writer.writeheader()
+        return filtered_exports
 
-            for transaction in transactions:
-                cleaned_transaction = self.format_transaction_data(transaction)
-                writer.writerow(cleaned_transaction)
+    def get_fieldnames(self, output_name):
+        if output_name == 'purchases':
+            return [
+                'date',
+                'loan_note_id',
+                'note_amount',
+                'loan_amount',
+                'term',
+                'rate',
+                'prosper_rating'
+            ]
 
     def sync(self, last_update_dates : Optional[Dict[str, date]] = None):
         """Sync the latest transactions from the LedgerLinker service."""
@@ -99,6 +122,8 @@ class LedgerLinkerServiceProvider(Provider):
         for export in exports:
             export_slug = export['slug']
             print(f'Fetching export: {export["name"]}')
+
+            self.register_output(export_slug, f'{export_slug}.csv')
 
             start_date = None
             if export_slug in last_update_dates:
@@ -114,7 +139,7 @@ class LedgerLinkerServiceProvider(Provider):
             append_mode = True
             file_path = self.get_export_file_path(export_slug, append_mode)
 
-            self.store_transactions(file_path, fieldnames, new_transactions)
+            self.store('purchases', new_transactions)
 
             if latest_transaction_date is not None:
                 last_update_dates[export_slug] = latest_transaction_date

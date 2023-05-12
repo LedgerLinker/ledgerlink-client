@@ -3,6 +3,8 @@ from typing import Optional, Dict, Any, List
 from datetime import date
 from csv import DictWriter
 
+from ledgerlinker.update_tracker import LastUpdateTracker
+
 
 class Provider:
     """Base class for a provider."""
@@ -27,6 +29,10 @@ class ProviderConfig:
 
 
 class Provider:
+    """Base class for a provider."""
+
+    def __init__(self, config : ProviderConfig):
+        self.config = config
 
     def get_fieldnames(self, output_name):
         return self.config['fields']
@@ -68,6 +74,6 @@ class Provider:
         self._outputs[output_name]['csv_writer'].writerow(data)
 
 
-    def sync(self, last_links : Optional[Dict[str, date]] = None):
+    def sync(self, last_links : LastUpdateTracker):
         """Sync the provider."""
         raise ProviderException(f'Provider {self} does not implement sync.')
