@@ -22,7 +22,7 @@ jobs:
         python-version: 3.9
     - name: Install dependencies
       run: |
-        pip install invoke pytest
+        pip install invoke pytest pytest-cov
         pip install --editable .
         python setup.py develop
     - name: Run pytest via invoke
