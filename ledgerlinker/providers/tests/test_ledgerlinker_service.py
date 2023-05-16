@@ -82,8 +82,8 @@ class LedgerLinkerProviderTestCase(TestCase):
         }
 
         self.ledgerlinker_provider.sync_export(export_details, update_tracker)
-        self.ledgerlinker_provider.register_output.assert_called_with('test-export', 'test-export.csv', fieldnames)
-        self.ledgerlinker_provider.store.assert_called_with('test-export', ['TRANS'])
+        self.ledgerlinker_provider.register_output.assert_called_with('bank-test-test-export', 'test-export.csv', fieldnames)
+        self.ledgerlinker_provider.store.assert_called_with('bank-test-test-export', ['TRANS'])
 
         self.ledgerlinker_provider.get_export.assert_called_once_with(
             'test-export',
