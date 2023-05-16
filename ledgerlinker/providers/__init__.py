@@ -2,10 +2,12 @@ from typing import Dict, List
 from .base import Provider, ProviderConfig
 from .prosper import ProsperProvider
 from .adp import ADPProvider
+from .ledgerlinker_service import LedgerLinkerServiceProvider
 
 PROVIDERS = {
         'prosper': ProsperProvider,
-        'adp': ADPProvider
+        'adp': ADPProvider,
+        'ledgerlinker': LedgerLinkerServiceProvider
 }
 
 def get_available_providers() -> Dict[str, Provider]:
@@ -17,7 +19,7 @@ def get_providers(provider_configs : Dict[str, ProviderConfig]) -> Dict[str, Pro
     available_providers = get_available_providers()
 
     for provider_name, provider_config in provider_configs.items():
-        provider_class = available_providers[provider_config.name]
+        provider_class = available_providers[provider_config.provider]
         provider = provider_class(provider_config)
         providers[provider_name] = provider
 

@@ -1,5 +1,5 @@
 import sys
-from typing import Dict
+from typing import Dict, Optional
 from datetime import date
 from json import JSONDecodeError
 import json
@@ -16,8 +16,9 @@ class LastUpdateTracker:
         """Get the last time the given export was synced."""
         return self.last_links.get(export_name, None)
 
-    def update(self, export_name : str, latest_date : date):
+    def update(self, export_name : str, latest_date : Optional[date]):
         """Update the last link file with the latest date for the given export."""
+
         self.last_links[export_name] = latest_date
         self._update_last_link_file(self.last_link_path, self.last_links)
 

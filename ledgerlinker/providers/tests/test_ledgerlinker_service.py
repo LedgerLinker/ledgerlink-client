@@ -11,6 +11,7 @@ class LedgerLinkerProviderTestCase(TestCase):
         config = ProviderConfig(
             name='bank-test',
             token='123-token',
+            output_dir='/tmp',
         )
         self.prosper_client_mock = Mock()
         self.ledgerlinker_provider = LedgerLinkerServiceProvider(config)
@@ -56,6 +57,38 @@ class LedgerLinkerProviderTestCase(TestCase):
             params={
                 'start_date': date(2020, 1, 1)
             })
+
+    def test_sync_export(self):
+        """Test syncing a single export file."""
+
+        new_transactions = ['TRANS']
+        latest_transaction_date = date(2020, 1, 1)
+        fieldnames = ['date', 'amount', 'description']
+
+        update_tracker = Mock()
+        update_tracker.get.return_value = date(2020, 1, 5)
+
+        self.ledgerlinker_provider.register_output = Mock()
+        self.ledgerlinker_provider.store = Mock()
+
+        self.ledgerlinker_provider.get_export = Mock(return_value=(
+            new_transactions, fieldnames, latest_transaction_date
+        ))
+        export_details = {
+            'name': 'Test Export',
+            'slug': 'test-export',
+            'json_download_url': 'https://superledgerlink.test/api/v1/transaction_exports/1/download.json',
+            'csv_download_url': 'https://superledgerlink.test/api/v1/transaction_exports/1/download.csv',
+        }
+
+        self.ledgerlinker_provider.sync_export(export_details, update_tracker)
+        self.ledgerlinker_provider.register_output.assert_called_with('test-export', 'test-export.csv', fieldnames)
+        self.ledgerlinker_provider.store.assert_called_with('test-export', ['TRANS'])
+
+        self.ledgerlinker_provider.get_export.assert_called_once_with(
+            'test-export',
+            export_details['json_download_url'],
+            start_date=date(2020, 1, 6))
 
 
 EX1_AVAILABLE_EXPORT_RESPONSE = [

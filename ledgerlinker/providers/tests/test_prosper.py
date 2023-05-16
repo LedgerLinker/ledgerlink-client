@@ -22,14 +22,13 @@ class ProsperTestCase(TestCase):
         self.prosper_client_mock.notes.return_value = EX1_NOTES
         results = self.provider.fetch_purchases(
             start_date=date(2020, 1, 1),
-            end_date=date(2022, 1, 31)
         )
 
         self.prosper_client_mock.notes.assert_called_once_with()
 
 EX1_NOTES = [
     {
-        'origination_date': date(2020, 1, 1),
+        'origination_date': '2020-01-01',
         'borrower_rate': 0.1,
         'loan_note_id': '4555-123',
         'amount_borrowed': 1000,
@@ -37,7 +36,7 @@ EX1_NOTES = [
         'note_ownership_amount': 25,
         'prosper_rating': 'B'
     }, {
-        'origination_date': date(2020, 5, 1),
+        'origination_date': '2020-05-01',
         'borrower_rate': 0.2,
         'loan_note_id': '4665-133',
         'amount_borrowed': 5000,

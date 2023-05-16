@@ -37,12 +37,19 @@ class Provider:
     def get_fieldnames(self, output_name):
         return self.config['fields']
 
-    def register_output(self, output_name : str, output_file_name : str):
+    def register_output(
+        self,
+        output_name : str,
+        output_file_name : str,
+        override_fieldnames : Optional[List[str]] = None
+    ):
         if not hasattr(self, '_outputs'):
             self._outputs = {}
 
         if output_name in self._outputs:
             raise ProviderException(f'Output {output_name} already registered.')
+
+        os.makedirs(self.config.output_dir, exist_ok=True)
 
         output_path = os.path.join(self.config.output_dir, output_file_name)
 
@@ -50,13 +57,14 @@ class Provider:
         fp = open(output_path, 'a+')
         csv_writer = DictWriter(
             fp,
-            fieldnames=self.get_fieldnames(output_name))
+            fieldnames=override_fieldnames if override_fieldnames else self.get_fieldnames(output_name))
 
         if not file_exists:
             csv_writer.writeheader()
 
         self._outputs[output_name] = {
             'path': output_path,
+            'fp': fp,
             'csv_writer': csv_writer
         }
 
@@ -72,6 +80,13 @@ class Provider:
             raise ProviderException(f'Output {output_name} not registered.')
 
         self._outputs[output_name]['csv_writer'].writerow(data)
+
+    def close(self):
+        if not hasattr(self, '_outputs'):
+            return
+
+        for output_name, output in self._outputs.items():
+            output['fp'].close()
 
 
     def sync(self, last_links : LastUpdateTracker):

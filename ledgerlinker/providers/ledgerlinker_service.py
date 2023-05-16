@@ -10,6 +10,7 @@ from csv import DictWriter
 from pathlib import Path
 from datetime import datetime, date, timedelta
 from .base import Provider, ProviderConfig
+from ledgerlinker.update_tracker import LastUpdateTracker
 
 DEFAULT_SERVICE_BASE_URL = 'https://app.ledgerlinker.com'
 
@@ -68,19 +69,21 @@ class LedgerLinkerServiceProvider(Provider):
             raise LedgerLinkerException('Error retrieving export from LedgerLinker service.')
 
         payload = response.json()
-        if len(payload['transactions']) == 0:
-            return None
+        if len(payload['transactions']) > 0:
+            cleaned_transactions = [
+                self.format_transaction_data(transaction)
+                for transaction in payload['transactions']
+            ]
 
-        cleaned_transactions = [
-            self.format_transaction_data(transaction)
-            for transaction in payload['transactions']
-        ]
+            latest_transaction_date = date.fromisoformat(payload['latest_transaction'])
+        else:
+            cleaned_transactions = []
+            latest_transaction_date = start_date
 
-        latest_transaction = date.fromisoformat(payload['latest_transaction'])
         return (
             cleaned_transactions,
             payload['fieldnames'],
-            latest_transaction
+            latest_transaction_date
         )
 
     def format_transaction_data(self, transaction):
@@ -103,48 +106,36 @@ class LedgerLinkerServiceProvider(Provider):
         return filtered_exports
 
     def get_fieldnames(self, output_name):
-        if output_name == 'purchases':
-            return [
-                'date',
-                'loan_note_id',
-                'note_amount',
-                'loan_amount',
-                'term',
-                'rate',
-                'prosper_rating'
-            ]
+        raise NotImplemented('get_fieldnames not implemented for LedgerLinkerServiceProvider')
 
-    def sync(self, last_update_dates : Optional[Dict[str, date]] = None):
+    def sync_export(self, export_details : dict, update_tracker : LastUpdateTracker):
+        """Sync transactions for a single export from the LedgerLinker service."""
+        print(f'Fetching export: {export_details["name"]}')
+
+        export_name = f"{self.config.name}-{export_details['slug']}"
+        start_date = None
+
+        last_update_date = update_tracker.get(export_name)
+        if last_update_date:
+            start_date = last_update_date + timedelta(days=1)
+            print(start_date)
+
+        new_transactions, fieldnames, latest_transaction_date = self.get_export(
+            export_details['slug'],
+            export_details['json_download_url'],
+            start_date=start_date,
+        )
+
+        self.register_output(export_name, f"{export_details['slug']}.csv", fieldnames)
+        self.store(export_name, new_transactions)
+
+        update_tracker.update(export_name, latest_transaction_date)
+
+
+    def sync(self, last_links : LastUpdateTracker):
         """Sync the latest transactions from the LedgerLinker service."""
         exports = self.get_available_exports()
-        exports = self.filter_exports(exports, self.desired_exports)
+        exports = self.filter_exports(exports, self.config.exports)
 
-        for export in exports:
-            export_slug = export['slug']
-            print(f'Fetching export: {export["name"]}')
-
-            self.register_output(export_slug, f'{export_slug}.csv')
-
-            start_date = None
-            if export_slug in last_update_dates:
-                start_date = last_update_dates[export_slug] + timedelta(days=1)
-                print(start_date)
-
-            new_transactions, latest_transaction_date, fieldnames = self.get_export(
-                export['slug'],
-                export['json_download_url'],
-                start_date=start_date,
-            )
-
-            append_mode = True
-            file_path = self.get_export_file_path(export_slug, append_mode)
-
-            self.store('purchases', new_transactions)
-
-            if latest_transaction_date is not None:
-                last_update_dates[export_slug] = latest_transaction_date
-
-        print(last_update_dates)
-
-        # TODO STORE LAST UPDATE DATES
-        #self.store_last_link_file(last_update_details)
+        for export_details in exports:
+            self.sync_export(export_details, last_links)
