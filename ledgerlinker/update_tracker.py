@@ -12,7 +12,7 @@ class LastUpdateTracker:
         self.last_link_path = last_link_path
         self.last_links = self._load_last_link_file(last_link_path)
 
-    def get(self, export_name : str) -> date:
+    def get(self, export_name : str) -> Optional[date]:
         """Get the last time the given export was synced."""
         return self.last_links.get(export_name, None)
 
@@ -47,7 +47,10 @@ class LastUpdateTracker:
             try:
                 last_links_by_export_slug[link_slug] = date.fromisoformat(last_link)
             except ValueError:
-                print('The last link file is corrupt. Please delete it and try again.')
+                print(
+                    f'The last link file is corrupt. Please delete it and try again.'
+                    f' The invalid key is "{link_slug}".'
+                )
                 sys.exit(1)
 
         return last_links_by_export_slug

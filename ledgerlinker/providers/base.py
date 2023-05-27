@@ -6,11 +6,6 @@ from csv import DictWriter
 from ledgerlinker.update_tracker import LastUpdateTracker
 
 
-class Provider:
-    """Base class for a provider."""
-    pass
-
-
 class ProviderException(Exception):
     pass
 
@@ -20,9 +15,11 @@ class ProviderConfig:
     def __init__(
         self,
         name : str,
+        output_dir : str,
         **extra_options : Dict
     ):
         self.name = name
+        self.output_dir = output_dir
         if extra_options:
             for key,value in extra_options.items():
                 setattr(self, key, value)
@@ -44,7 +41,7 @@ class Provider:
         override_fieldnames : Optional[List[str]] = None
     ):
         if not hasattr(self, '_outputs'):
-            self._outputs = {}
+            self._outputs : Dict[str, Dict] = {}
 
         if output_name in self._outputs:
             raise ProviderException(f'Output {output_name} already registered.')
@@ -57,7 +54,8 @@ class Provider:
         fp = open(output_path, 'a+')
         csv_writer = DictWriter(
             fp,
-            fieldnames=override_fieldnames if override_fieldnames else self.get_fieldnames(output_name))
+            fieldnames=override_fieldnames if override_fieldnames else self.get_fieldnames(output_name),
+            lineterminator='\n')
 
         if not file_exists:
             csv_writer.writeheader()
@@ -85,7 +83,7 @@ class Provider:
         if not hasattr(self, '_outputs'):
             return
 
-        for output_name, output in self._outputs.items():
+        for output in self._outputs.values():
             output['fp'].close()
 
 

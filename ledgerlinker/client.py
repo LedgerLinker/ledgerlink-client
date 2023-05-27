@@ -29,10 +29,17 @@ class LedgerLinkerClient:
         self.providers = get_providers(self.config.providers)
         self.last_update_tracker = LastUpdateTracker(self._last_link_path)
 
-    def sync(self):
-        """Sync all loaded providers."""
+    def sync(self, desired_providers : List[str] = None):
+        """Sync all loaded providers.
+
+        desired_providers: A list of provider names to sync. If not provided, all providers will be synced.
+        """
 
         for provider_name, provider in self.providers.items():
+            if desired_providers:
+                if provider_name not in desired_providers:
+                    continue
+
             print(f'Running sync for {provider_name}...')
             provider.sync(self.last_update_tracker)
 
@@ -84,11 +91,13 @@ class LedgerLinkerClient:
 def main():
     parser = argparse.ArgumentParser(description='Sync client for the LedgerLinker Service.')
     parser.add_argument('-c', '--config', required=True, help='Path to LedgerLinker Sync config file')
+    parser.add_argument('-p', '--providers', nargs='*', default=[], help='A list of providers to sync by "name". If not provided, all providers will be synced.')
 
     args = parser.parse_args()
-
     client = LedgerLinkerClient(args.config)
-    client.sync()
+    client.sync(
+        desired_providers=args.providers
+    )
 
 if __name__ == '__main__':
     main()

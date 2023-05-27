@@ -118,8 +118,11 @@ class LedgerLinkerServiceProvider(Provider):
         last_update_date = update_tracker.get(export_name)
         if last_update_date:
             start_date = last_update_date + timedelta(days=1)
-            print(start_date)
+            if start_date > date.today():
+                print(f'Export {export_name} is already up to date.')
+                return
 
+        print(f'Fetching transactions since {start_date}.')
         new_transactions, fieldnames, latest_transaction_date = self.get_export(
             export_details['slug'],
             export_details['json_download_url'],

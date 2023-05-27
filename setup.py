@@ -4,8 +4,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="ledgerlinker-client",
-    version="1.0.0",
+    name="ledgerlinker",
+    version="1.1.0",
     author="LedgerLinker",
     author_email="help@ledgerlinker.com",
     description="Syncronize your financial institution data to plain text accounting ledgers.",
