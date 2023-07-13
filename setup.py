@@ -11,7 +11,7 @@ setuptools.setup(
     description="Syncronize your financial institution data to plain text accounting ledgers.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/ledgerlinker/ledgerlinker-client",
+    url="https://github.com/ledgerlinker/ledgerlinker",
     packages=setuptools.find_packages(),
     entry_points={
         'console_scripts': [

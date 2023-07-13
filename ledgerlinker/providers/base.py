@@ -1,7 +1,7 @@
 import os
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import date
-from csv import DictWriter
+from csv import DictWriter, DictReader
 
 from ledgerlinker.update_tracker import LastUpdateTracker
 
@@ -34,6 +34,17 @@ class Provider:
     def get_fieldnames(self, output_name):
         return self.config['fields']
 
+    def check_file_exists_and_get_existing_fieldnames(self, path : str) -> Tuple[bool, Optional[str]]:
+        """Check if the file exists and has the correct fieldnames."""
+        if not os.path.exists(path):
+            return False, None
+
+        with open(path, 'r') as fp:
+            csv_reader = DictReader(fp)
+            fieldnames = csv_reader.fieldnames
+
+        return True, fieldnames
+
     def register_output(
         self,
         output_name : str,
@@ -49,13 +60,21 @@ class Provider:
         os.makedirs(self.config.output_dir, exist_ok=True)
 
         output_path = os.path.join(self.config.output_dir, output_file_name)
+        file_exists, fieldnames = self.check_file_exists_and_get_existing_fieldnames(output_path)
 
-        file_exists = os.path.exists(output_path)
+        expected_fieldnames = override_fieldnames if override_fieldnames else self.get_fieldnames(output_name)
+        if not fieldnames:
+            fieldnames = expected_fieldnames
+
+        if fieldnames != expected_fieldnames:
+            print('Warning: fieldnames in existing file do not match expected fieldnames. Using existing file fields.')
+
         fp = open(output_path, 'a+')
         csv_writer = DictWriter(
             fp,
-            fieldnames=override_fieldnames if override_fieldnames else self.get_fieldnames(output_name),
-            lineterminator='\n')
+            fieldnames=fieldnames,
+            lineterminator='\n',
+            extrasaction='ignore')
 
         if not file_exists:
             csv_writer.writeheader()

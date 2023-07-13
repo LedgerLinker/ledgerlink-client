@@ -33,6 +33,11 @@ class LedgerLinkerServiceProvider(Provider):
         except AttributeError:
             raise LedgerLinkerException('No ledgerlinker service token found in config file.')
 
+        try:
+            self._category_separator = config.category_separator
+        except AttributeError:
+            self._category_separator = ':'
+
 
     def get_headers(self) -> dict:
         return {'Authorization': f'Token {self.token}'}
@@ -90,7 +95,7 @@ class LedgerLinkerServiceProvider(Provider):
         """Format the transaction data to be written to the CSV file."""
         data = transaction.copy()
         if 'categories' in data:
-            data['categories'] = ','.join(data['categories'])
+            data['categories'] = self._category_separator.join(data['categories'])
         return data
 
     def filter_exports(self, exports, desired_exports):
