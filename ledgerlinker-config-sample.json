@@ -1,22 +1,24 @@
 {
 
-    # Your LedgerLink token. Do not share this with anyone! You can get your
-    # token from the LedgerLinker website (https://app.ledgerlinker.com)
-    "token": "<your token>",
+    # The path to the base directory where outputs should be stored unless overriden
+    # by a particular provider.
+    "output_dir": "./",
 
-    # The path to the directory where the bot will store its data.
-    # This can be an absolute path or a path relative to the directory that
-    # the sync script is executed in.
-    "link_dir": "./imports"
+    "providers": [{
+        "name": "<name of this configuration>",
+        "provider": "ledgerlinker",
 
-    # Do you want to create a new file each time new transactions are synced or
-    # do you want to append to the same file?
-    "append_transactions": true,
+        # Your LedgerLink token. Do not share this with anyone! You can get your
+        # token from the LedgerLinker website (https://app.ledgerlinker.com)
+        "token": "<your token>",
 
-    # Filter the transactions that are synced by Export. You can acquire your
-    # transaction export slug at https://app.ledgerlinker.com/exports
-    "exports": [
-        "<account-1-slug>",
-        "<account-2-slug>"
-    ]
-}
+        # The path to the directory where the bot will store its data.
+        # This can be an absolute path or a path relative to the directory that
+        # the sync script is executed in.
+        "output_dir": "<overide output directory path>",
+
+        "exports": [
+            "<the slug of the account you want to export>",
+            "<you can add as many as you want here>",
+        ]
+    },

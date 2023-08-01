@@ -18,6 +18,15 @@ class LedgerLinkerException(Exception):
     pass
 
 
+HOLDINGS_FIELD_MAP = {
+    'effective_date': 'Date',
+    'name': 'Security',
+    'quantity': 'Quantity',
+    'price': 'Price',
+    'security_type': 'type',
+    'account': 'account'
+}
+
 class LedgerLinkerServiceProvider(Provider):
 
     def __init__(self, config : ProviderConfig):
@@ -64,7 +73,7 @@ class LedgerLinkerServiceProvider(Provider):
         else:
             return f'{self.link_dir}/{nickname}-{fetch_time}.csv'
 
-    def get_export(self, nickname : str, json_url : str, start_date = None) -> Tuple[List[Dict], str, date]:
+    def get_export(self, nickname : str, json_url : str, start_date : date = None) -> Tuple[List[Dict], str, date]:
         params = {}
         if start_date is not None:
             params['start_date'] = start_date
@@ -91,6 +100,20 @@ class LedgerLinkerServiceProvider(Provider):
             latest_transaction_date
         )
 
+    def get_holding_balances(self, nickname : str, start_date : date) -> List[Dict]:
+        json_url = f'{self.service_base_url}/exports/{nickname}/holdings/download'
+        params = {
+            'start_date': start_date
+        }
+        response = requests.get(json_url, headers=self.get_headers(), params=params)
+        if response.status_code != 200:
+            raise LedgerLinkerException('Error retrieving export of balances from LedgerLinker service.')
+
+        results = response.json()['holdings'].copy()
+        for result in results:
+            result['account'] = nickname
+            yield result
+
     def format_transaction_data(self, transaction):
         """Format the transaction data to be written to the CSV file."""
         data = transaction.copy()
@@ -113,7 +136,7 @@ class LedgerLinkerServiceProvider(Provider):
     def get_fieldnames(self, output_name):
         raise NotImplemented('get_fieldnames not implemented for LedgerLinkerServiceProvider')
 
-    def sync_export(self, export_details : dict, update_tracker : LastUpdateTracker):
+    def sync_export_transactions(self, export_details : dict, update_tracker : LastUpdateTracker):
         """Sync transactions for a single export from the LedgerLinker service."""
         print(f'Fetching export: {export_details["name"]}')
 
@@ -140,10 +163,51 @@ class LedgerLinkerServiceProvider(Provider):
         update_tracker.update(export_name, latest_transaction_date)
 
 
-    def sync(self, last_links : LastUpdateTracker):
+    def sync_export_holdings(self, slugs : List[str], update_tracker : LastUpdateTracker):
+        """Sync balances for a single export from the LedgerLinker service."""
+        export_name = f"{self.config.name}-holdings"
+        start_date = None
+
+        last_update_date = update_tracker.get(export_name)
+        if last_update_date:
+            start_date = last_update_date + timedelta(days=1)
+            if start_date > date.today():
+                print(f'Export {export_name} is already up to date.')
+                return
+
+        print(f'Fetching holding balances since {start_date}.')
+        holdings = []
+        for slug in slugs:
+            new_holdings = self.get_holding_balances(slug, start_date)
+            holdings.extend(new_holdings)
+
+        self.register_output(
+            export_name,
+            f"{export_name}.csv",
+            HOLDINGS_FIELD_MAP.values())
+
+        self.store(export_name, [
+            {
+                HOLDINGS_FIELD_MAP[field]: value
+                for field, value in holding.items()
+            }
+            for holding in holdings
+        ])
+
+        latest_update_date = max([
+            date.fromisoformat(holding['effective_date'])
+            for holding in holdings
+        ])
+
+        update_tracker.update(export_name, latest_update_date)
+
+    def sync(self, last_links_tracker : LastUpdateTracker):
         """Sync the latest transactions from the LedgerLinker service."""
         exports = self.get_available_exports()
         exports = self.filter_exports(exports, self.config.exports)
 
         for export_details in exports:
-            self.sync_export(export_details, last_links)
+            self.sync_export_transactions(export_details, last_links_tracker)
+
+        slugs = [export['slug'] for export in exports]
+        self.sync_export_holdings(slugs, last_links_tracker)
